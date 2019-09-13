@@ -1,0 +1,16 @@
+[package]
+name = "rust-graphql-example"
+version = "0.1.0"
+authors = ["Ian Wilson <iwilsonq@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+actix-web = "1.0.0"
+diesel = { version = "1.0.0", features = ["postgres"] }
+dotenv = "0.9.0"
+env_logger = "0.6"
+futures = "0.1"
+juniper = "0.13.1"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
