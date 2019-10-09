@@ -1,36 +1,34 @@
 extern crate dotenv;
 
-use std::env;
-
-use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use dotenv::dotenv;
 use juniper::RootNode;
 
+use crate::db::PgPool;
 use crate::schema::members;
+
+#[derive(Clone)]
+pub struct Context {
+  pub db: PgPool,
+}
+
+impl juniper::Context for Context {}
 
 pub struct QueryRoot;
 
-fn establish_connection() -> PgConnection {
-  dotenv().ok();
-  let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-  PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url))
-}
-
-#[juniper::object]
+#[juniper::object(Context = Context)]
 impl QueryRoot {
-  fn members() -> Vec<Member> {
+  fn members(context: &Context) -> Vec<Member> {
     use crate::schema::members::dsl::*;
-    let connection = establish_connection();
+    let connection = context.db.get().unwrap();;
     members
       .limit(100)
       .load::<Member>(&connection)
       .expect("Error loading members")
   }
 
-  fn teams() -> Vec<Team> {
+  fn teams(context: &Context) -> Vec<Team> {
     use crate::schema::teams::dsl::*;
-    let connection = establish_connection();
+    let connection = context.db.get().unwrap();;
     teams
       .limit(10)
       .load::<Team>(&connection)
@@ -40,10 +38,10 @@ impl QueryRoot {
 
 pub struct MutationRoot;
 
-#[juniper::object]
+#[juniper::object(Context = Context)]
 impl MutationRoot {
-  fn create_member(data: NewMember) -> Member {
-    let connection = establish_connection();
+  fn create_member(context: &Context, data: NewMember) -> Member {
+    let connection = context.db.get().unwrap();;
     diesel::insert_into(members::table)
       .values(&data)
       .get_result(&connection)
@@ -92,7 +90,7 @@ pub struct Team {
   pub name: String,
 }
 
-#[juniper::object(description = "A team of members")]
+#[juniper::object(Context = Context, description = "A team of members")]
 impl Team {
   pub fn id(&self) -> i32 {
     self.id
@@ -102,9 +100,9 @@ impl Team {
     self.name.as_str()
   }
 
-  pub fn members(&self) -> Vec<Member> {
+  pub fn members(&self, context: &Context) -> Vec<Member> {
     use crate::schema::members::dsl::*;
-    let connection = establish_connection();
+    let connection = context.db.get().unwrap();
     members
       .filter(team_id.eq(self.id))
       .limit(100)
